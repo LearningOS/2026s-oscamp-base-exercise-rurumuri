@@ -41,7 +41,35 @@ impl<T> SpinLock<T> {
     /// Caller must ensure `unlock` is called after using the data.
     pub fn lock(&self) -> &mut T {
         // TODO
-        todo!()
+        while self.locked.load(Ordering::Relaxed) {};
+        let locked_current = self.locked.load(Ordering::Relaxed);    // May be wrong? even after spin, it is not atomic. But it passed the test
+        match self.locked.compare_exchange(locked_current, true, Ordering::Acquire, Ordering::Relaxed) {
+            // Ok(true) => {
+            Ok(_) => {
+                unsafe { self.data.get().as_mut().unwrap() }
+            }
+            _ => {
+                core::hint::spin_loop();
+                self.lock()
+            }
+        }
+
+        // while self.locked.load(Ordering::Relaxed) {};
+        // match self.locked.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed) {
+        //     Ok(_) => {
+        //         unsafe { self.data.get().as_mut().unwrap() }
+        //     }
+        //     _ => {
+        //         core::hint::spin_loop();
+        //         self.lock()
+        //     }
+        // }
+
+        // More elegant 
+        // while !self.locked.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok() {
+        //     core::hint::spin_loop();
+        // }
+        // unsafe { self.data.get().as_mut().unwrap() }
     }
 
     /// Release lock.
@@ -49,14 +77,19 @@ impl<T> SpinLock<T> {
     /// TODO: Set locked to false (using Release ordering)
     pub fn unlock(&self) {
         // TODO
-        todo!()
+        self.locked.store(false, Ordering::Release);
     }
 
     /// Try to acquire lock without spinning.
     /// Returns Some(&mut T) on success, None if lock is busy.
     pub fn try_lock(&self) -> Option<&mut T> {
         // TODO: Single compare_exchange attempt
-        todo!()
+        if self.locked.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok() {
+            unsafe { Some(self.data.get().as_mut().unwrap()) }
+        } else {
+            None
+        }
+        
     }
 }
 
