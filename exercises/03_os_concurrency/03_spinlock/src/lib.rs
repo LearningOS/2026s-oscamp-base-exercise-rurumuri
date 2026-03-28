@@ -41,18 +41,18 @@ impl<T> SpinLock<T> {
     /// Caller must ensure `unlock` is called after using the data.
     pub fn lock(&self) -> &mut T {
         // TODO
-        while self.locked.load(Ordering::Relaxed) {};
-        let locked_current = self.locked.load(Ordering::Relaxed);    // May be wrong? even after spin, it is not atomic. But it passed the test
-        match self.locked.compare_exchange(locked_current, true, Ordering::Acquire, Ordering::Relaxed) {
-            // Ok(true) => {
-            Ok(_) => {
-                unsafe { self.data.get().as_mut().unwrap() }
-            }
-            _ => {
-                core::hint::spin_loop();
-                self.lock()
-            }
-        }
+        // while self.locked.load(Ordering::Relaxed) {};
+        // let locked_current = self.locked.load(Ordering::Relaxed);    // May be wrong? even after spin, it is not atomic. But it passed the test  // It sometimes pass
+        // match self.locked.compare_exchange(locked_current, true, Ordering::Acquire, Ordering::Relaxed) {
+        //     // Ok(true) => {
+        //     Ok(_) => {
+        //         unsafe { self.data.get().as_mut().unwrap() }
+        //     }
+        //     _ => {
+        //         core::hint::spin_loop();
+        //         self.lock()
+        //     }
+        // }
 
         // while self.locked.load(Ordering::Relaxed) {};
         // match self.locked.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed) {
@@ -66,10 +66,10 @@ impl<T> SpinLock<T> {
         // }
 
         // More elegant 
-        // while !self.locked.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok() {
-        //     core::hint::spin_loop();
-        // }
-        // unsafe { self.data.get().as_mut().unwrap() }
+        while !self.locked.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok() {
+            core::hint::spin_loop();
+        }
+        unsafe { self.data.get().as_mut().unwrap() }
     }
 
     /// Release lock.
