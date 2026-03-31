@@ -64,7 +64,14 @@ impl Future for YieldOnce {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        todo!()
+        // todo!()
+        if !self.yielded {
+            self.get_mut().yielded = true;
+            cx.waker().wake_by_ref();   // program will run forever without this
+            Poll::Pending
+        } else {
+            Poll::Ready(())
+        }
     }
 }
 
